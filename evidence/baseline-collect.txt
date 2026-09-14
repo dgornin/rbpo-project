@@ -1,0 +1,29 @@
+# Сбор опорного набора тестов на baseline
+# Дата: 2026-09-14
+# Дерево: commit 359b1bc2657e92ad02da0be1515314ebd9835d3e (тег v0.1.0-baseline)
+# Окружение: backend/.venv (Python 3.11), установлено до начала работ
+# Команда: .venv/bin/python -m pytest --collect-only -q
+#
+# ВАЖНО: это СБОР тестов, а не прогон. Прогон требует поднятого Postgres
+# с расширением pgvector (backend/tests/conftest.py создаёт одноразовую БД
+# tb_test_<hex> и выполняет CREATE EXTENSION vector). На момент сдачи паспорта
+# контейнер не поднимался: podman machine не инициализирован.
+
+tests/test_admin.py::test_admin_requires_admin
+tests/test_admin.py::test_admin_stats_and_funnel
+tests/test_agent.py::test_agent_adds_place_via_fake_llm
+tests/test_auth.py::test_signup_login_logout_me
+tests/test_auth.py::test_signup_conflict
+tests/test_auth.py::test_login_bad_password
+tests/test_auth.py::test_me_requires_auth
+tests/test_events.py::test_event_logged
+tests/test_events.py::test_event_with_session
+tests/test_geocoding.py::test_geocoding_parses_nominatim
+tests/test_geocoding.py::test_geocoding_empty
+tests/test_health.py::test_health_ok
+tests/test_rag.py::test_embed_and_retrieve
+tests/test_telegram_link.py::test_link_code_roundtrip
+tests/test_trips.py::test_trip_crud_and_share
+tests/test_trips.py::test_trip_requires_auth
+tests/test_trips.py::test_public_private_404
+17 tests collected in 0.04s

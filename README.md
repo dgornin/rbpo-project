@@ -1,93 +1,54 @@
-# Travel Buddy RU
+# Проект курса «Разработка безопасного ПО» — Travel Buddy RU
 
-AI trip planner for Russia. Speak or type to an LLM agent, get a multi-day plan
-with pins on a map, refine by chat or Telegram, share the result.
+Командный репозиторий проекта магистерского курса НИУ ВШЭ «Разработка безопасного ПО»
+(2026/2027). Материалы курса: <https://github.com/hse-rbpo-master-2026/course>.
 
-Built in a single Claude Code session (vibe-coding).
+Объект проекта — **Travel Buddy RU**, веб-приложение «AI-планировщик путешествий по России».
+Границы проекта сужены до **backend HTTP API и его границы аутентификации и авторизации**;
+полное описание объекта, границ, активов и ограничений — в [`project.md`](project.md).
 
-## Feature matrix (course rubric, 12/12)
+| | |
+|---|---|
+| **Исходное состояние (baseline)** | commit `359b1bc`, тег `v0.1.0-baseline` |
+| **Планируемый выпуск** | `v0.2.0` |
+| **Участники** | Горнин Даниил Леонидович; второй участник не определён |
 
-| # | Criterion | Where |
-|---|---|---|
-| 1 | Solves an applied task | Trip-planning across Russia with map routing |
-| 2 | Vibe-coded | End-to-end in a Claude Code session; design via `frontend-design` skill |
-| 3 | Uses an LLM | Anthropic Claude **Haiku 4.5** via LangChain + LangGraph ReAct agent |
-| 4 | Telegram bot | `python-telegram-bot` worker with `/start`, `/link`, `/new_trip`, `/trips` |
-| 5 | Landing page | `/` — hero, features, CTA, marquee, footer |
-| 6 | Web UI | React 18 + Vite + TypeScript + Tailwind SPA |
-| 7 | Authentication | Email + password, bcrypt, JWT in HttpOnly cookie |
-| 8 | RAG assistant | `pgvector` + `sentence-transformers` multilingual MiniLM + curated RU corpus |
-| 9 | Database | Postgres 16 with pgvector extension |
-| 10 | Voice input (STT) | Web Speech API (`ru-RU`) in the composer + faster-whisper fallback |
-| 11 | Usage stats dashboard | `/app/admin` — KPI cards, line chart, top-destinations |
-| 12 | Funnel analytics | events pipeline + `/app/admin` funnel: page_view → signup → trip_created → message_sent → trip_shared |
+## Структура репозитория
 
-## Screens
-
-- `/` landing — editorial travel-atlas aesthetic, animated SVG route hero
-- `/signup`, `/login` — boarding-pass ticket-stub as split hero
-- `/app/trips` — trip list + new-trip form (destination, dates, interests)
-- `/app/trips/:id` — map-primary layout, glass itinerary card, floating chat composer, day chips with keyboard shortcuts 1–9
-- `/app/admin` — KPI, stats chart, funnel (admin-only)
-- `/app/settings/telegram` — link-code issuance + deep-link
-- `/share/trips/:id` — public read-only share view
-
-## Stack
-
-- **Frontend:** React 18, Vite, TypeScript, Tailwind v3, React-Router, `@tanstack/react-query`, `zustand`, `react-leaflet`, `framer-motion`, `recharts`, `lucide-react`
-- **Backend:** FastAPI, SQLAlchemy (async, asyncpg), Pydantic v2, Alembic, sse-starlette
-- **Database:** PostgreSQL 16 with `pgvector` extension
-- **LLM:** Anthropic Claude Haiku 4.5 via `langchain-anthropic` + `langgraph.create_agent` (ReAct loop)
-- **Tools:** `@tool`-decorated async functions; session-per-tool for safe parallel tool calls; per-trip `asyncio.Lock` to serialize `order_index` writes
-- **RAG:** `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` → `Vector(384)` in pgvector; cosine distance retrieval
-- **Maps:** Leaflet + OpenStreetMap tiles; Nominatim geocoding
-- **STT:** browser Web Speech API primary; `faster-whisper` fallback behind `/api/stt`
-- **Telegram:** `python-telegram-bot` long-polling worker, shares DB with web backend
-- **Auth:** bcrypt hashing; JWT in HttpOnly `access_token` cookie
-
-## Architecture
-
-```
-┌──────────────┐      ┌────────────────────┐     ┌────────────────┐
-│ React SPA    │◀────▶│ FastAPI            │◀───▶│ Postgres 16    │
-│ (Vite 5173)  │ SSE  │ - /api/auth        │     │ + pgvector     │
-│              │      │ - /api/trips       │     │                │
-│              │      │ - /api/messages    │     │                │
-│              │      │ - /api/events      │     │                │
-│              │      │ - /api/admin       │     │                │
-│              │      │ - /api/stt         │     │                │
-│              │      │ - /api/telegram    │     │                │
-│              │      └──────────┬─────────┘     └────────────────┘
-│              │                 │                        ▲
-│              │                 ▼                        │
-│              │         ┌──────────────┐                 │
-│              │         │ LangGraph    │                 │
-│              │         │ ReAct agent  │                 │
-│              │         │ Haiku 4.5    │                 │
-│              │         └──────┬───────┘                 │
-│              │                │ tools:                  │
-│              │                │ kb_search/search_place/ │
-│              │                │ add_place/remove/update │
-│              │                │ set_day_title/summary   │
-│              │                └─────────────────────────┘
-└──────────────┘
-                         ┌────────────────────┐
-                         │ Telegram bot       │◀─── shares DB
-                         │ (long poll)        │
-                         └────────────────────┘
+```text
+.
+├── README.md          ← этот файл: запуск продукта и повторение проверок
+├── project.md         ← весь проект: от паспорта до решения о выпуске
+├── individual/        ← индивидуальные страницы участников (к ЭК2)
+├── evidence/          ← проверяемые результаты, на которые ссылается project.md
+├── backend/           ← FastAPI-приложение (объект анализа)
+├── frontend/          ← React SPA (вне границ анализа кода, клиент для DAST)
+├── docker-compose.yml, Makefile, .env.example
+└── docs/              ← проектная документация продукта
+    └── product-readme-en.md  ← исходный README продукта (архитектура, скриншоты)
 ```
 
-## Quick start (local dev)
+## Требования к среде
+
+- Python 3.11, Node.js 20;
+- podman или docker — для Postgres с расширением `pgvector`;
+- ключ `ANTHROPIC_API_KEY` — **обязателен для работы ядра продукта** (LLM-агент).
+  Без него поднимаются регистрация, CRUD поездок и карта, но не планирование маршрута;
+- сетевой доступ к HuggingFace CDN: при первом обращении к RAG скачивается модель
+  эмбеддера multilingual MiniLM (~480 МБ).
+
+## Запуск продукта
 
 ```bash
-# 1. Environment
+# 1. Окружение
 cp .env.example .env
-# fill in ANTHROPIC_API_KEY (and optionally TELEGRAM_BOT_TOKEN)
+# заполнить ANTHROPIC_API_KEY, JWT_SECRET, POSTGRES_*, CORS_ORIGINS
+# TELEGRAM_BOT_TOKEN — опционально, нужен только боту
 
-# 2. Dependencies
+# 2. Зависимости
 make install                 # python3.11 venv + npm install
 
-# 3. Bring up Postgres with pgvector (via podman/docker)
+# 3. Postgres с pgvector (хост-порт 5433, а не 5432)
 podman run -d --name tb-postgres \
   -e POSTGRES_USER=travelbuddy \
   -e POSTGRES_PASSWORD=travelbuddy \
@@ -95,75 +56,79 @@ podman run -d --name tb-postgres \
   -p 5433:5432 \
   pgvector/pgvector:pg16
 
-# 4. Migrate + seed RAG corpus
+# 4. Миграции и корпус RAG
 make migrate                 # alembic upgrade head
+make seed-rag                # загрузка backend/data/kb_russia.jsonl
 
-# 5. Start services (three terminals, or use docker compose)
-make backend-dev             # uvicorn on :8000
-make frontend-dev            # vite on :5173
-make bot-dev                 # telegram long-polling (optional)
+# 5. Запуск (три терминала)
+make backend-dev             # uvicorn :8000
+make frontend-dev            # vite :5173
+make bot-dev                 # telegram long-polling, опционально
 ```
 
-Open http://localhost:5173, sign up, describe a trip.
+Открыть <http://localhost:5173>. Полный стек одной командой: `make up` (podman/docker compose),
+остановка — `make down`.
 
-### Demo credentials
+Подробная архитектура, схема компонентов и описание экранов — в
+[`docs/product-readme-en.md`](docs/product-readme-en.md) и [`CLAUDE.md`](CLAUDE.md).
 
-Pre-seeded accounts used during E2E testing:
+## Как повторить проверки
 
-| Email | Password | Role |
-|---|---|---|
-| **`admin@travelbuddy.ru`** | **`admin1234`** | **Admin** — sees `/app/admin` analytics dashboard |
-| `chrome@local.ru` | `secret1` | Admin (backup) |
-| `demo@local.ru` | `secret1` | Regular user |
+### Проверки, доступные на baseline
 
-> Easiest way to get a clean admin for a demo:
-> ```bash
-> make backend-dev-seed-admin   # (or re-run the one-liner below)
-> ```
->
-> ```bash
-> cd backend && .venv/bin/python -c "
-> import asyncio; from sqlalchemy import select
-> from app.db.session import SessionLocal; from app.db.models import User
-> from app.core.security import hash_password
-> async def main():
->   async with SessionLocal() as db:
->     u = (await db.execute(select(User).where(User.email=='admin@travelbuddy.ru'))).scalar_one_or_none()
->     if u:
->       u.password_hash = hash_password('admin1234'); u.is_admin = True
->     else:
->       db.add(User(email='admin@travelbuddy.ru', password_hash=hash_password('admin1234'), is_admin=True, display_name='Admin'))
->     await db.commit()
-> asyncio.run(main())"
-> ```
->
-> Or just `POST /api/auth/signup` for a fresh regular account.
-
-### Full-stack via compose (podman or docker)
+Это тот набор, который существует в продукте на теге `v0.1.0-baseline`. Он и образует
+точку отсчёта для раздела 3 `project.md`.
 
 ```bash
-make up
+# Тесты. Требуется поднятый Postgres с pgvector: conftest.py создаёт
+# и удаляет одноразовую БД tb_test_<hex> и выполняет CREATE EXTENSION vector.
+make test
+# backend: 17 pytest-тестов
+# frontend: vitest настроен, но тестов нет — набор пустой
+
+# Линтеры
+make lint
+# backend: ruff check (правила E,F,I,B,UP,PL,RUF)
+# frontend: eslint
 ```
 
-This brings up postgres, backend (runs migrations), bot, and the production
-nginx-served frontend build.
+Запуск отдельного backend-теста без пересборки окружения:
 
-## Tests
+```bash
+cd backend && set -a && source ../.env && set +a && .venv/bin/pytest tests/test_auth.py -q
+```
 
-- Backend: **17 pytest** tests (auth / events / trips CRUD / geocoding / RAG retrieval / agent tool-loop / admin / telegram link)
-  ```bash
-  make test   # runs backend + frontend
-  ```
-- Throwaway test DB per session (conftest creates and drops it with pgvector enabled).
+### Чего на baseline нет
 
-## Notable implementation details
+Это фиксируется здесь сознательно — перечисленное станет материалом для разрывов
+(раздел 3) и целевого Secure SDLC (раздел 4) в `project.md`:
 
-- **Agent**: `langchain.agents.create_agent` with a list of `@tool` functions. Each tool opens its own `AsyncSession`, so the agent's parallel tool-calls don't collide on a shared session. `add_place` also acquires a per-trip `asyncio.Lock` to avoid `order_index` races.
-- **Streaming**: SSE via `sse-starlette`, events `token | tool_call | tool_result | state | done | error`. Frontend parses via a small `streamPostSse` helper over `fetch()` (native EventSource can't POST).
-- **Stacking context**: Leaflet creates internal panes with z-index 200–700 that otherwise escape their parent. `.leaflet-container { isolation: isolate }` contains them so our overlays (z-20 / z-30) render correctly on top.
-- **Corp TLS**: `SSL_CERT_FILE` honored for Anthropic HTTPS — combine with Yandex root CA for MITM'd networks. Escape hatch `ANTHROPIC_DISABLE_TLS_VERIFY=true` for emergencies.
+- **CI/CD отсутствует полностью** — каталога `.github` нет, никакой другой системы сборки нет;
+- **нет lock-файла Python** — 25 прямых зависимостей заданы диапазонами `>=`, поэтому
+  результат `pip install` невоспроизводим между запусками. Для `frontend` lock есть
+  (`package-lock.json`);
+- **нет фронтовых тестов** — `npm test` выполняет пустой набор;
+- **нет проверок безопасности** — SAST, SCA, SBOM, secret scan, DAST не настроены.
 
-## Docs
+### Проверки, добавленные в рамках проекта
 
-- Design spec: [`docs/superpowers/specs/2026-04-18-travel-buddy-ru-design.md`](docs/superpowers/specs/2026-04-18-travel-buddy-ru-design.md)
-- Implementation plan: [`docs/superpowers/plans/2026-04-18-travel-buddy-ru.md`](docs/superpowers/plans/2026-04-18-travel-buddy-ru.md)
+Появятся по мере семинаров 07–09. Команды запуска и ссылки на результаты будут добавлены
+в этот раздел и в [`evidence/`](evidence/README.md), а их интерпретация — в разделы 6–8
+`project.md`.
+
+## Конфиденциальность
+
+- Локальный `.env` с боевыми ключами **не коммитится и не публикуется**. Он закрыт
+  `.gitignore` и никогда не попадал в историю репозитория.
+- Файл `backend/certs/yandex-ca.pem` (корпоративный сертификат) не коммитится и не публикуется.
+- В `evidence/` не попадают секреты, дампы реальных данных и полные выводы инструментов,
+  содержащие чувствительные значения.
+- Учётные записи, упомянутые в документации продукта, — локальные демонстрационные,
+  относятся только к одноразовой dev-базе и не действуют ни в какой развёрнутой среде.
+
+## Использование генеративного ИИ
+
+Исходный продукт создан с помощью генеративного ИИ (Claude Code). Курс это прямо разрешает;
+раскрытие оформляется в разделе 12 `project.md`. Проектные решения по безопасности,
+интерпретация результатов проверок и решение о выпуске принимаются участниками команды
+самостоятельно и подтверждаются свидетельствами в `evidence/`.

@@ -1,0 +1,65 @@
+# Обследование развёрнутой среды (read-only)
+# Дата: 2026-10-05, цель: https://travelbuddy.gornin.com/
+# Выполнял: Горнин Д.Л. Только GET-запросы. Запись в продовую БД НЕ выполнялась.
+# Вход с опубликованными демо-паролями НЕ выполнялся намеренно.
+
+## Доступность и TLS
+  GET /            -> HTTP 200, ip 93.77.188.237, ssl_verify_result 0
+  GET /api/health  -> HTTP 200
+  GET http:// (без TLS) -> HTTP 301, Location: https://travelbuddy.gornin.com/
+
+## Сертификат
+  issuer=C=US, O=Let's Encrypt, CN=YE2
+  subject=CN=travelbuddy.gornin.com
+  notBefore=Aug 17 04:34:10 2026 GMT
+  notAfter=Nov 15 04:34:09 2026 GMT
+
+## Аутентификация на живом стенде действует
+  GET /api/auth/me         -> HTTP 401
+  GET /api/trips           -> HTTP 401
+  GET /api/admin/stats     -> HTTP 401
+
+## Заголовки ответа на корне (заголовков безопасности нет)
+  HTTP/1.1 200 OK
+  Server: nginx/1.24.0 (Ubuntu)
+  Date: Mon, 05 Oct 2026 15:09:18 GMT
+  Content-Type: text/html
+  Content-Length: 796
+  Connection: keep-alive
+  Last-Modified: Sat, 18 Apr 2026 23:30:45 GMT
+  ETag: "69e41425-31c"
+  Accept-Ranges: bytes
+  
+## ЛОЖНОЕ СРАБАТЫВАНИЕ: автодокументация FastAPI наружу НЕ выставлена
+# Все пути ниже, включая заведомо несуществующий, отдают один и тот же index.html
+# длиной 796 байт с Content-Type: text/html. Это SPA-fallback nginx, а не Swagger.
+  GET /docs                      -> HTTP 200, text/html, 796 байт
+  GET /redoc                     -> HTTP 200, text/html, 796 байт
+  GET /openapi.json              -> HTTP 200, text/html, 796 байт
+  GET /sdfsdf-nonexistent-xyz    -> HTTP 200, text/html, 796 байт
+
+## Дозапись 2026-10-05 (та же сессия владельца, только GET)
+# Тела и заголовки, которых не хватало в первой записи.
+
+  GET /api/health -> HTTP 200
+    Server: nginx/1.24.0 (Ubuntu)
+    Content-Type: application/json
+    Content-Length: 11
+    Connection: keep-alive
+    тело: {"ok":true}
+    # Last-Modified / ETag / Accept-Ranges отсутствуют (это заголовки статики).
+    # Идентификатора версии или сборки в ответе нет.
+
+## Решающий контроль к ложному срабатыванию: 404 от backend под проксируемым префиксом
+# Контроль на корне недостаточен - он лежит в той же зоне SPA-fallback.
+  GET /api/docs         -> HTTP 404, application/json, 22 байта, {"detail":"Not Found"}
+  GET /api/openapi.json -> HTTP 404, application/json, 22 байта, {"detail":"Not Found"}
+# Ответ приходит от backend: префикс /api nginx не срезает, роутеры автодокументации
+# под ним не смонтированы.
+
+## Поведение backend на живой цели совпадает с кодом тега baseline
+  GET /api/trips -> HTTP 401, application/json, 30 байт, {"detail":"Not authenticated"}
+# Ровно строка из backend/app/api/deps.py:19. Это не доказательство тождества сборки.
+
+# НЕ выполнялось: POST /api/events, POST /api/auth/login, POST /api/auth/signup,
+# GET /api/public/trips/{id} - запрет на изменяющие и аутентификационные запросы к проду.
